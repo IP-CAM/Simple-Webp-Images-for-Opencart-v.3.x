@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+	<code>moo_webp</code>
+	<name>Moo WebP</name>
+	<version>1.0.0</version>
+	<author>Coolycow</author>
+	<link>https://coolycow.com/</link>
+	<file path="catalog/model/tool/image.php">
+		<operation error="skip">
+			<search><![CDATA[$image_new = str_replace(' ', '%20', $image_new);]]></search>
+			<add position="before"><![CDATA[
+			$moo_webp_image = $mooWebpIs = false;
+
+			$gd = gd_info();
+
+			if (isset($gd['WebP Support']) && $gd['WebP Support'] && isset($this->request->server['HTTP_ACCEPT']) && strpos($this->request->server['HTTP_ACCEPT'], 'webp')) {
+				$mooWebpIs = true;
+			}
+
+			if ($mooWebpIs && $extension != 'gif') {
+				$moo_webp_image = 'cache/webp/' . utf8_substr($filename, 0, utf8_strrpos($filename, '.')) . '-' . (int)$width . 'x' . (int)$height . '.webp';
+
+				if (!is_file(DIR_IMAGE . $moo_webp_image) || (filemtime(DIR_IMAGE . $image_new) > filemtime(DIR_IMAGE . $moo_webp_image))) {
+					$path = '';
+
+					$directories = explode('/', dirname($moo_webp_image));
+
+					foreach ($directories as $directory) {
+						$path = $path . '/' . $directory;
+
+						if (!is_dir(DIR_IMAGE . $path)) {
+							@mkdir(DIR_IMAGE . $path, 0777);
+						}
+					}
+
+					if (strtolower($extension) == 'jpg') {
+						$image_original = imagecreatefromjpeg(DIR_IMAGE . $image_new);
+					} elseif (strtolower($extension) == 'png') {
+						$image_original = imagecreatefrompng(DIR_IMAGE . $image_new);
+					}
+
+					if (isset($image_original)) {
+						imagewebp($image_original, DIR_IMAGE . $moo_webp_image, 85);
+						imagedestroy($image_original);
+
+						if (filesize(DIR_IMAGE . $moo_webp_image) % 2 == 1) {
+							file_put_contents(DIR_IMAGE . $moo_webp_image, "\0", FILE_APPEND);
+						}
+					} else {
+						$moo_webp_image = false;
+					}
+				}
+			}
+			]]></add>
+    	</operation>
+    	<operation error="skip">
+			<search><![CDATA[. $image_new;]]></search>
+			<add position="replace"><![CDATA[. ($moo_webp_image ? $moo_webp_image : $image_new);]]></add>
+    	</operation>
+    	<operation error="skip">
+			<search><![CDATA[$extension = pathinfo($filename, PATHINFO_EXTENSION);]]></search>
+			<add position="after"><![CDATA[
+			if (strtolower($extension) == 'svg' || strtolower($extension) == 'gif') {
+				$moo_webp_image = $mooWebpIs = false;
+
+				$image_new = $filename;
+			} else {
+			]]></add>
+    	</operation>
+		<operation error="skip">
+			<search><![CDATA[if ($this->request->server['HTTPS']) {]]></search>
+			<add position="before"><![CDATA[
+			}
+			]]></add>
+    	</operation>
+	</file>
+</modification>
